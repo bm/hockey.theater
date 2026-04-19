@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# hockey.theater
 
-## Getting Started
+Browse NHL game highlights, recaps, and goal clips — free, no account required, spoiler-safe.
 
-First, run the development server:
+Inspired by [baseball.theater](https://baseball.theater) by Jake Lauer.
+
+## Features
+
+- **Schedule by date** — browse every NHL game, navigate day by day
+- **Live scores** — auto-refreshes every 30 seconds when games are in progress
+- **Game recaps** — 3-minute recap and condensed game videos
+- **Goal timeline** — every goal with scorer, assists, time, and clip link
+- **Hide scores** — spoiler-free mode; reveal individual games when ready
+- **Favorite team** — your team's games sort to the top of every schedule page
+- **Team filter** — filter any day's schedule to a single team
+- **Playoffs** — series status on every card and game page
+- **Dark mode** by default (toggleable)
+- **No database, no auth, no tracking**
+
+## Running locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). No environment variables required — all data comes from the public NHL API.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 (strict) |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Data fetching | TanStack Query v5 |
+| State | Zustand v5 |
+| Package manager | pnpm |
+| Deployment | Vercel |
 
-## Learn More
+Data comes from the public NHL API at `api-web.nhle.com/v1`. All requests are proxied through Next.js Route Handlers — no NHL API calls happen from the browser.
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+  games/[date]/       Schedule page
+  game/[gameId]/      Game detail page
+  api/                NHL API proxy route handlers
+components/
+  layout/             Navbar, DateNav, FavoriteTeamModal
+  schedule/           GameCard, ScheduleGrid, TeamFilterBar
+  game/               GameHero, RecapSection, GoalTimeline, ThreeStars, TeamStats
+lib/
+  nhl-api/            API client, schedule/game fetchers, video URL resolution
+  team-colors.ts      Static data for all 32 teams (colors, logos, metadata)
+  dates.ts            Date formatting utilities
+store/
+  index.ts            Zustand store: hideScores, favoriteTeam
+types/
+  nhl.ts              Raw NHL API response types
+  game.ts             Normalized internal types
+proxy.ts              URL redirects and team abbrev normalization
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Caching
 
-## Deploy on Vercel
+NHL API responses are cached at the Next.js Route Handler layer with TTLs tuned to game state:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Data | TTL |
+|---|---|
+| Past schedule | 24 hours |
+| Today's schedule (pre-game) | 5 minutes |
+| Today's schedule (live) | 30 seconds |
+| Game landing (final) | 1 hour |
+| Game landing (live) | 20 seconds |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Roadmap
+
+- [ ] Individual goal clips embedded inline
+- [ ] Play-by-play feed (filterable by event type)
+- [ ] Team hub pages (`/team/BOS`)
+- [ ] Search (teams instant, players via NHL search API)
+- [ ] Boxscore table
+- [ ] PWA / installable
+- [ ] Standings page
+- [ ] Playoffs bracket view
+- [ ] French language support
+
+## Contributing
+
+PRs welcome. The dev setup is just `pnpm install && pnpm dev` — no Docker, no database, no secrets needed.
+
+## Data
+
+All game data and video content is property of the NHL. This project uses the NHL's public API and is not affiliated with or endorsed by the NHL.
