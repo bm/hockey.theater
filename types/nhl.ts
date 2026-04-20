@@ -111,7 +111,7 @@ export interface NHLScoreResponse {
   prevDate: string;
   currentDate: string;
   nextDate: string;
-  gamesByDate: NHLGameDay[];
+  gamesByDate?: NHLGameDay[];
 }
 
 // Game landing (detail page)
