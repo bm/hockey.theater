@@ -129,6 +129,6 @@ export async function fetchScore(date: string): Promise<NormalizedGame[]> {
     next: { revalidate: CACHE_TTL.TODAY_LIVE },
   });
 
-  const day = data.gamesByDate.find((d) => d.date === date);
+  const day = data.gamesByDate?.find((d) => d.date === date);
   return day ? day.games.map(normalizeGame) : [];
 }
