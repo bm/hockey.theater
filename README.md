@@ -8,13 +8,14 @@ Inspired by [baseball.theater](https://baseball.theater) by Jake Lauer.
 
 - **Schedule by date** — browse every NHL game, navigate day by day
 - **Live scores** — auto-refreshes every 30 seconds when games are in progress
-- **Game recaps** — 3-minute recap and condensed game videos
-- **Goal timeline** — every goal with scorer, assists, time, and clip link
+- **Game recaps** — 3-minute recap and condensed game videos embedded directly on the page
+- **Goal timeline** — every goal with scorer, assists, time, and inline video player
+- **Period box score** — per-period goal breakdown on every game detail page
 - **Hide scores** — spoiler-free mode; reveal individual games when ready
 - **Favorite team** — your team's games sort to the top of every schedule page
 - **Team filter** — filter any day's schedule to a single team
 - **Playoffs** — series status on every card and game page
-- **Dark mode** by default (toggleable)
+- **Dark/light mode** — dark by default, toggleable in the navbar
 - **No database, no auth, no tracking**
 
 ## Running locally
@@ -33,12 +34,13 @@ Open [http://localhost:3000](http://localhost:3000). No environment variables re
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 (strict) |
 | Styling | Tailwind CSS v4 + shadcn/ui |
+| Fonts | Barlow Condensed (display) + DM Sans (body) |
 | Data fetching | TanStack Query v5 |
 | State | Zustand v5 |
 | Package manager | pnpm |
 | Deployment | Vercel |
 
-Data comes from the public NHL API at `api-web.nhle.com/v1`. All requests are proxied through Next.js Route Handlers — no NHL API calls happen from the browser.
+Data comes from the public NHL API at `api-web.nhle.com/v1`. All requests are proxied through Next.js Route Handlers — no NHL API calls happen from the browser. Goal clip and recap videos are embedded via Brightcove (the NHL's video host).
 
 ## Project structure
 
@@ -50,7 +52,8 @@ app/
 components/
   layout/             Navbar, DateNav, FavoriteTeamModal
   schedule/           GameCard, ScheduleGrid, TeamFilterBar
-  game/               GameHero, RecapSection, GoalTimeline, ThreeStars, TeamStats
+  game/               GameHero, RecapSection, GoalTimeline, GoalWatchButton,
+                      ThreeStars, TeamStats
 lib/
   nhl-api/            API client, schedule/game fetchers, video URL resolution
   team-colors.ts      Static data for all 32 teams (colors, logos, metadata)
@@ -75,9 +78,13 @@ NHL API responses are cached at the Next.js Route Handler layer with TTLs tuned 
 | Game landing (final) | 1 hour |
 | Game landing (live) | 20 seconds |
 
+## Video
+
+Goal clips and game recaps are currently embedded as Brightcove iframes using milestone IDs from the NHL API. The planned upgrade is to replace these with `hls.js` playing raw HLS streams fetched server-side from the Brightcove Playback API — giving full control over the player UI without exposing any API keys to the client. See `CLAUDE.md` for the full plan.
+
 ## Roadmap
 
-- [ ] Individual goal clips embedded inline
+- [ ] Native video player via `hls.js` (replace Brightcove iframes)
 - [ ] Play-by-play feed (filterable by event type)
 - [ ] Team hub pages (`/team/BOS`)
 - [ ] Search (teams instant, players via NHL search API)
@@ -85,7 +92,6 @@ NHL API responses are cached at the Next.js Route Handler layer with TTLs tuned 
 - [ ] PWA / installable
 - [ ] Standings page
 - [ ] Playoffs bracket view
-- [ ] French language support
 
 ## Contributing
 

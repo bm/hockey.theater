@@ -109,5 +109,5 @@ Persisted to `localStorage` under key `hockey-theater-prefs`:
 - Play-by-play UI — `/api/game/[gameId]/pbp` route exists, no component
 - Boxscore table — `/api/game/[gameId]/boxscore` route exists, no component
 - Search — team search is instant (client-side `lib/team-colors.ts`), player search via `search.d3.nhle.com`
-- Individual goal clip player (inline `<iframe>` per goal)
+- Individual goal clip player — **currently uses Brightcove `<iframe>` embed**. Planned upgrade: swap to `hls.js` + native `<video>`. Flow: route handler fetches raw `.m3u8` URL from Brightcove Playback API (`edge.api.brightcove.com/playback/v1/accounts/6415718365001/videos/{milestoneId}`) using the policy key extracted from NHL.com page JS; client plays the stream with `hls.js` attached to a `<video>` element. This gives full control over the player UI, lighter load, and reliable autoplay (vs. Brightcove's player config).
 - PWA manifest, standings, playoffs bracket
