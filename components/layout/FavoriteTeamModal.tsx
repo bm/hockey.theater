@@ -18,7 +18,7 @@ export function FavoriteTeamModal() {
   if (!mounted || hasChosenTeam) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
       <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl">
         <button
           onClick={dismissTeamPicker}
@@ -28,7 +28,9 @@ export function FavoriteTeamModal() {
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="text-xl font-bold mb-1">Choose your team</h2>
+        <h2 className="font-display font-bold text-2xl uppercase tracking-wide mb-1">
+          Choose your team
+        </h2>
         <p className="text-sm text-muted-foreground mb-6">
           Your team&apos;s games will appear first in the schedule.
         </p>
@@ -46,7 +48,7 @@ export function FavoriteTeamModal() {
                 alt={team.fullName}
                 width={40}
                 height={40}
-                className="hidden dark:block"
+                className="hidden dark:block transition-transform group-hover:scale-110"
                 unoptimized
               />
               <Image
@@ -54,10 +56,10 @@ export function FavoriteTeamModal() {
                 alt={team.fullName}
                 width={40}
                 height={40}
-                className="dark:hidden"
+                className="dark:hidden transition-transform group-hover:scale-110"
                 unoptimized
               />
-              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+              <span className="text-xs font-display font-semibold text-muted-foreground group-hover:text-foreground uppercase tracking-wide">
                 {team.abbrev}
               </span>
             </button>
@@ -68,7 +70,7 @@ export function FavoriteTeamModal() {
           variant="ghost"
           size="sm"
           onClick={dismissTeamPicker}
-          className="mt-4 w-full text-muted-foreground"
+          className="mt-4 w-full text-muted-foreground font-medium"
         >
           Skip — show all teams
         </Button>

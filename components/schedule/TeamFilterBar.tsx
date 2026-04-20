@@ -26,7 +26,6 @@ export function TeamFilterBar({ selectedTeam }: TeamFilterBarProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
-  // Sort: favorite first, then alphabetical
   const sortedTeams = [...NHL_TEAMS_LIST].sort((a, b) => {
     if (a.abbrev === favoriteTeam) return -1;
     if (b.abbrev === favoriteTeam) return 1;
@@ -38,10 +37,10 @@ export function TeamFilterBar({ selectedTeam }: TeamFilterBarProps) {
       <button
         onClick={() => selectTeam(null)}
         className={cn(
-          "flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+          "flex-shrink-0 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-all duration-150",
           selectedTeam === null
-            ? "bg-foreground text-background"
-            : "bg-muted text-muted-foreground hover:text-foreground"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent"
         )}
       >
         All
@@ -55,10 +54,10 @@ export function TeamFilterBar({ selectedTeam }: TeamFilterBarProps) {
             key={team.abbrev}
             onClick={() => selectTeam(isSelected ? null : team.abbrev)}
             className={cn(
-              "flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              "flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-all duration-150",
               isSelected
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent"
             )}
           >
             {isFav && <Star className="h-2.5 w-2.5 fill-current" />}

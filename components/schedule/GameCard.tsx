@@ -23,35 +23,37 @@ function TeamRow({ team, score, hideScores, revealed, isFinal }: TeamScoreProps)
 
   return (
     <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         <Image
           src={team.darkLogo || team.logo}
           alt={team.name}
-          width={28}
-          height={28}
+          width={30}
+          height={30}
           className="hidden dark:block flex-shrink-0"
           unoptimized
         />
         <Image
           src={team.logo}
           alt={team.name}
-          width={28}
-          height={28}
+          width={30}
+          height={30}
           className="dark:hidden flex-shrink-0"
           unoptimized
         />
         <div className="min-w-0">
-          <div className="font-medium text-sm truncate">{team.shortName}</div>
+          <div className="font-display font-semibold text-base uppercase tracking-wide truncate leading-tight">
+            {team.shortName}
+          </div>
           {team.record && (
-            <div className="text-xs text-muted-foreground">{team.record}</div>
+            <div className="text-xs text-muted-foreground leading-tight">{team.record}</div>
           )}
         </div>
       </div>
 
       {showScore && (
-        <div className="font-mono font-bold text-xl tabular-nums">
+        <div className="font-display font-bold text-3xl tabular-nums leading-none">
           {hideScores && !revealed ? (
-            <span className="text-muted-foreground">?</span>
+            <span className="text-muted-foreground text-2xl">?</span>
           ) : (
             score
           )}
@@ -77,7 +79,7 @@ function GameStatusBadge({ game }: { game: NormalizedGame }) {
           ? "SO"
           : `P${period}`;
     return (
-      <Badge className="bg-red-600 text-white animate-pulse border-0">
+      <Badge className="bg-red-600 text-white animate-pulse border-0 font-semibold tracking-wide">
         LIVE · {periodLabel}
       </Badge>
     );
@@ -85,8 +87,8 @@ function GameStatusBadge({ game }: { game: NormalizedGame }) {
   if (game.gameState === "final") {
     const suffix = game.gameOutcome === "OT" ? "/OT" : game.gameOutcome === "SO" ? "/SO" : "";
     return (
-      <Badge variant="outline" className="text-xs">
-        Final{suffix}
+      <Badge variant="outline" className="text-xs font-semibold tracking-wide">
+        FINAL{suffix}
       </Badge>
     );
   }
@@ -107,71 +109,81 @@ export function GameCard({ game }: GameCardProps) {
   const cardContent = (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-4 flex flex-col gap-3 transition-all",
-        "hover:border-border/80 hover:shadow-md",
-        game.gameState === "postponed" && "opacity-60",
-        (isLive || game.gameState === "critical") &&
-          "border-red-500/30 bg-red-950/5"
+        "rounded-xl border border-border bg-card overflow-hidden flex flex-col transition-all duration-200",
+        "hover:border-border/60 hover:shadow-xl hover:-translate-y-0.5",
+        game.gameState === "postponed" && "opacity-50",
+        isLive && "border-red-500/25 shadow-[0_0_24px_rgba(239,68,68,0.1)]"
       )}
     >
-      {/* Status row */}
-      <div className="flex items-center justify-between gap-2">
-        <GameStatusBadge game={game} />
-        {isScheduled && (
-          <span className="text-xs text-muted-foreground">
-            {formatGameTime(game.startTimeUTC)}
-          </span>
-        )}
-        {game.isPlayoffs && game.seriesStatus && (
-          <span className="text-xs text-muted-foreground truncate max-w-[140px]">
-            {game.seriesStatus}
-          </span>
-        )}
-        {hideScores && isFinal && !revealed && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              setRevealed(true);
-            }}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Eye className="h-3 w-3" />
-            Reveal
-          </button>
-        )}
-      </div>
+      {/* Team color split strip */}
+      <div
+        className="h-[3px] w-full flex-shrink-0"
+        style={{
+          background: `linear-gradient(to right, ${game.awayTeam.primaryColor} 50%, ${game.homeTeam.primaryColor} 50%)`,
+        }}
+      />
 
-      {/* Teams */}
-      <div className="flex flex-col gap-2">
-        <TeamRow
-          team={game.awayTeam}
-          score={game.awayTeam.score}
-          hideScores={hideScores}
-          revealed={revealed}
-          isFinal={isFinal || isLive}
-        />
-        <TeamRow
-          team={game.homeTeam}
-          score={game.homeTeam.score}
-          hideScores={hideScores}
-          revealed={revealed}
-          isFinal={isFinal || isLive}
-        />
-      </div>
-
-      {/* Broadcasts */}
-      {game.broadcasts.length > 0 && (
-        <div className="flex gap-1 flex-wrap">
-          {game.broadcasts.map((network) => (
-            <span
-              key={network}
-              className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
-            >
-              {network}
+      <div className="p-4 flex flex-col gap-3">
+        {/* Status row */}
+        <div className="flex items-center justify-between gap-2 min-h-5">
+          <GameStatusBadge game={game} />
+          {isScheduled && (
+            <span className="text-xs text-muted-foreground ml-auto font-medium">
+              {formatGameTime(game.startTimeUTC)}
             </span>
-          ))}
+          )}
+          {game.isPlayoffs && game.seriesStatus && (
+            <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+              {game.seriesStatus}
+            </span>
+          )}
+          {hideScores && isFinal && !revealed && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setRevealed(true);
+              }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto transition-colors"
+            >
+              <Eye className="h-3 w-3" />
+              Reveal
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Teams */}
+        <div className="flex flex-col gap-2.5">
+          <TeamRow
+            team={game.awayTeam}
+            score={game.awayTeam.score}
+            hideScores={hideScores}
+            revealed={revealed}
+            isFinal={isFinal || isLive}
+          />
+          <div className="h-px bg-border/50" />
+          <TeamRow
+            team={game.homeTeam}
+            score={game.homeTeam.score}
+            hideScores={hideScores}
+            revealed={revealed}
+            isFinal={isFinal || isLive}
+          />
+        </div>
+
+        {/* Broadcasts */}
+        {game.broadcasts.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {game.broadcasts.map((network) => (
+              <span
+                key={network}
+                className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium"
+              >
+                {network}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -188,22 +200,26 @@ export function GameCard({ game }: GameCardProps) {
 
 export function GameCardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 animate-pulse">
-      <div className="h-5 w-16 bg-muted rounded" />
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 bg-muted rounded-full" />
-            <div className="h-4 w-20 bg-muted rounded" />
+    <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col animate-pulse">
+      <div className="h-[3px] bg-muted w-full" />
+      <div className="p-4 flex flex-col gap-3">
+        <div className="h-5 w-16 bg-muted rounded" />
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 bg-muted rounded-full" />
+              <div className="h-4 w-20 bg-muted rounded" />
+            </div>
+            <div className="h-7 w-8 bg-muted rounded" />
           </div>
-          <div className="h-6 w-8 bg-muted rounded" />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 bg-muted rounded-full" />
-            <div className="h-4 w-20 bg-muted rounded" />
+          <div className="h-px bg-muted" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 bg-muted rounded-full" />
+              <div className="h-4 w-20 bg-muted rounded" />
+            </div>
+            <div className="h-7 w-8 bg-muted rounded" />
           </div>
-          <div className="h-6 w-8 bg-muted rounded" />
         </div>
       </div>
     </div>

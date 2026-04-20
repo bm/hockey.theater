@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import type { GoalClip } from "@/types/game";
 import { cn } from "@/lib/utils";
+import { GoalWatchButton } from "./GoalWatchButton";
 
 const STRENGTH_LABEL: Record<string, string> = {
   pp: "PP",
@@ -30,20 +31,22 @@ export function GoalTimeline({ goals, awayAbbrev, homeAbbrev }: GoalTimelineProp
     );
   }
 
-  // Group by period
   const byPeriod = goals.reduce<Record<number, GoalClip[]>>((acc, goal) => {
     (acc[goal.period] ??= []).push(goal);
     return acc;
   }, {});
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {Object.entries(byPeriod).map(([periodStr, periodGoals]) => {
         const period = Number(periodStr);
         return (
           <div key={period}>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              {PERIOD_LABEL[period] ?? `P${period}`} Period
+            <div className="flex items-center gap-3 mb-4">
+              <span className="font-display font-bold text-sm uppercase tracking-widest text-muted-foreground">
+                {PERIOD_LABEL[period] ?? `P${period}`} Period
+              </span>
+              <div className="flex-1 h-px bg-border" />
             </div>
             <div className="flex flex-col gap-2">
               {periodGoals.map((goal) => {
@@ -54,53 +57,52 @@ export function GoalTimeline({ goals, awayAbbrev, homeAbbrev }: GoalTimelineProp
                   <div
                     key={goal.eventId}
                     className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border border-border",
-                      isHome ? "flex-row-reverse" : "flex-row"
+                      "flex flex-col gap-2 p-3.5 rounded-lg border border-border bg-card/50 hover:bg-card transition-colors"
                     )}
                   >
-                    {goal.scorerHeadshot && (
-                      <Image
-                        src={goal.scorerHeadshot}
-                        alt={goal.scorer}
-                        width={40}
-                        height={40}
-                        className="rounded-full flex-shrink-0"
-                        unoptimized
-                      />
-                    )}
-                    <div className={cn("flex-1 min-w-0", isHome && "text-right")}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">{goal.scorer}</span>
-                        {strengthLabel && (
-                          <Badge variant="secondary" className="text-xs">
-                            {strengthLabel}
-                          </Badge>
+                    {/* Main row: headshot · scorer info · score */}
+                    <div className={cn("flex items-start gap-3", isHome ? "flex-row-reverse" : "flex-row")}>
+                      {goal.scorerHeadshot && (
+                        <Image
+                          src={goal.scorerHeadshot}
+                          alt={goal.scorer}
+                          width={40}
+                          height={40}
+                          className="rounded-full flex-shrink-0 ring-2 ring-border"
+                          unoptimized
+                        />
+                      )}
+                      <div className={cn("flex-1 min-w-0", isHome && "text-right")}>
+                        <div className={cn("flex items-center gap-2 flex-wrap", isHome && "justify-end")}>
+                          <span className="font-semibold text-sm">{goal.scorer}</span>
+                          {strengthLabel && (
+                            <Badge variant="secondary" className="text-xs font-semibold">
+                              {strengthLabel}
+                            </Badge>
+                          )}
+                        </div>
+                        {goal.assists.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {goal.assists.join(", ")}
+                          </p>
                         )}
                       </div>
-                      {goal.assists.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {goal.assists.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className={cn("text-right flex-shrink-0", isHome && "text-left")}>
-                      <div className="text-xs text-muted-foreground">
-                        {goal.timeInPeriod}
+                      <div className={cn("text-right flex-shrink-0", isHome && "text-left")}>
+                        <div className="text-xs text-muted-foreground font-medium">
+                          {goal.timeInPeriod}
+                        </div>
+                        <div className="font-display font-bold text-lg tabular-nums leading-tight">
+                          {goal.awayScore}–{goal.homeScore}
+                        </div>
                       </div>
-                      <div className="text-sm font-mono font-bold">
-                        {goal.awayScore}–{goal.homeScore}
-                      </div>
-                      {goal.highlightClipSharingUrl && (
-                        <a
-                          href={goal.highlightClipSharingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          ▶ Watch
-                        </a>
-                      )}
                     </div>
+
+                    {/* Watch button — centered */}
+                    {goal.embedUrl && (
+                      <div className="flex justify-center pt-0.5">
+                        <GoalWatchButton goal={goal} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

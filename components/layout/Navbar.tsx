@@ -1,60 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useAppStore, useFavoriteTeam } from "@/store";
 import { getTeam } from "@/lib/team-colors";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { hideScores, toggleHideScores } = useAppStore();
   const favoriteTeam = useFavoriteTeam();
   const team = favoriteTeam ? getTeam(favoriteTeam) : null;
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2.5 group">
           {team ? (
-            <Image
-              src={team.darkLogoUrl}
-              alt={team.fullName}
-              width={32}
-              height={32}
-              className="hidden dark:block"
-              unoptimized
-            />
+            <>
+              <Image
+                src={team.darkLogoUrl}
+                alt={team.fullName}
+                width={32}
+                height={32}
+                className="hidden dark:block transition-transform group-hover:scale-110"
+                unoptimized
+              />
+              <Image
+                src={team.logoUrl}
+                alt={team.fullName}
+                width={32}
+                height={32}
+                className="dark:hidden transition-transform group-hover:scale-110"
+                unoptimized
+              />
+            </>
           ) : (
-            <span className="text-lg font-bold tracking-tight">🏒</span>
+            <span className="text-xl transition-transform group-hover:scale-110 inline-block">🏒</span>
           )}
-          <span className="font-bold tracking-tight text-lg">
-            hockey<span className="text-muted-foreground">.theater</span>
+          <span className="font-display font-bold text-xl uppercase tracking-widest">
+            hockey<span className="text-primary">.</span><span className="text-muted-foreground font-semibold normal-case tracking-normal text-lg">theater</span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleHideScores}
             title={hideScores ? "Show scores" : "Hide scores"}
-            className="gap-2"
+            className="gap-2 text-xs font-medium"
           >
             {hideScores ? (
               <>
                 <EyeOff className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Scores hidden</span>
+                <span className="hidden sm:inline">Scores hidden</span>
               </>
             ) : (
               <>
                 <Eye className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Hide scores</span>
+                <span className="hidden sm:inline">Hide scores</span>
               </>
             )}
           </Button>
+
+          {mounted && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="h-9 w-9"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </div>
       </div>
+      <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
     </header>
   );
 }

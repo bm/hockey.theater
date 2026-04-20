@@ -7,6 +7,51 @@ interface GameHeroProps {
   game: GameDetail;
 }
 
+const PERIOD_COL_LABEL = ["1", "2", "3", "OT", "2OT", "3OT"];
+
+function PeriodBoxScore({ game }: { game: GameDetail }) {
+  const away = game.awayTeam.goalsByPeriod ?? [];
+  const home = game.homeTeam.goalsByPeriod ?? [];
+  const numPeriods = Math.max(away.length, home.length);
+  if (numPeriods === 0) return null;
+
+  return (
+    <div className="mt-6 flex justify-center">
+      <table className="text-sm font-display tabular-nums border-collapse">
+        <thead>
+          <tr className="text-xs text-muted-foreground uppercase tracking-wider">
+            <th className="text-left pr-6 pb-1 font-semibold w-16" />
+            {Array.from({ length: numPeriods }, (_, i) => (
+              <th key={i} className="w-10 text-center pb-1 font-semibold">
+                {PERIOD_COL_LABEL[i] ?? `P${i + 1}`}
+              </th>
+            ))}
+            <th className="w-10 text-center pb-1 font-bold pl-2 border-l border-border">T</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            { team: game.awayTeam, goals: away },
+            { team: game.homeTeam, goals: home },
+          ].map(({ team, goals }) => (
+            <tr key={team.abbrev}>
+              <td className="pr-6 py-0.5 font-bold text-xs tracking-wide">{team.abbrev}</td>
+              {Array.from({ length: numPeriods }, (_, i) => (
+                <td key={i} className="w-10 text-center py-0.5 text-muted-foreground">
+                  {goals[i] ?? 0}
+                </td>
+              ))}
+              <td className="w-10 text-center py-0.5 font-bold pl-2 border-l border-border">
+                {team.score ?? goals.reduce((a, b) => a + b, 0)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function periodLabel(period: number, periodType: string): string {
   if (periodType === "SO") return "Shootout";
   if (periodType === "OT") return "Overtime";
@@ -15,7 +60,7 @@ function periodLabel(period: number, periodType: string): string {
 
 export function GameHero({ game }: GameHeroProps) {
   const isFinal = game.gameState === "final";
-  const isLive = game.gameState === "live";
+  const isLive = game.gameState === "live" || game.gameState === "critical";
 
   const outcomeSuffix =
     game.periodType === "OT"
@@ -25,10 +70,18 @@ export function GameHero({ game }: GameHeroProps) {
         : "";
 
   return (
-    <div className="w-full py-8 border-b border-border">
-      <div className="mx-auto max-w-4xl px-4">
+    <div className="w-full relative overflow-hidden py-12 border-b border-border/40">
+      {/* Team color ambient background */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `linear-gradient(to right, ${game.awayTeam.primaryColor}40 0%, transparent 45%, transparent 55%, ${game.homeTeam.primaryColor}40 100%)`,
+        }}
+      />
+
+      <div className="relative mx-auto max-w-4xl px-4">
         {/* Date + Venue */}
-        <div className="text-center text-sm text-muted-foreground mb-6">
+        <div className="text-center text-sm text-muted-foreground mb-8 font-medium">
           <span>{formatDisplayDate(game.date)}</span>
           {game.venue && <span> · {game.venue}</span>}
           {!isFinal && !isLive && (
@@ -37,81 +90,89 @@ export function GameHero({ game }: GameHeroProps) {
         </div>
 
         {/* Teams + Score */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 sm:gap-8">
           {/* Away Team */}
-          <div className="flex flex-col items-center gap-2 flex-1">
+          <div className="flex flex-col items-center gap-3 flex-1">
             <Image
               src={game.awayTeam.darkLogo || game.awayTeam.logo}
               alt={game.awayTeam.name}
-              width={80}
-              height={80}
-              className="hidden dark:block"
+              width={96}
+              height={96}
+              className="hidden dark:block drop-shadow-lg"
               unoptimized
             />
             <Image
               src={game.awayTeam.logo}
               alt={game.awayTeam.name}
-              width={80}
-              height={80}
-              className="dark:hidden"
+              width={96}
+              height={96}
+              className="dark:hidden drop-shadow-lg"
               unoptimized
             />
             <div className="text-center">
-              <div className="font-bold text-lg">{game.awayTeam.shortName}</div>
+              <div className="font-display font-bold text-xl sm:text-2xl uppercase tracking-wider leading-tight">
+                {game.awayTeam.shortName}
+              </div>
               {game.awayTeam.record && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground mt-0.5 font-medium">
                   {game.awayTeam.record}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Score */}
-          <div className="flex flex-col items-center gap-2 min-w-[120px]">
+          {/* Score center */}
+          <div className="flex flex-col items-center gap-3 min-w-[140px] sm:min-w-[180px]">
             {(isFinal || isLive) &&
-              game.awayTeam.score !== undefined &&
-              game.homeTeam.score !== undefined ? (
-              <div className="flex items-center gap-4 font-mono font-black text-5xl tabular-nums">
-                <span>{game.awayTeam.score}</span>
-                <span className="text-muted-foreground text-3xl">–</span>
-                <span>{game.homeTeam.score}</span>
+            game.awayTeam.score !== undefined &&
+            game.homeTeam.score !== undefined ? (
+              <div className="flex items-center gap-4 sm:gap-6 font-display font-black leading-none">
+                <span className="text-6xl sm:text-8xl tabular-nums">{game.awayTeam.score}</span>
+                <span className="text-muted-foreground text-3xl sm:text-4xl">–</span>
+                <span className="text-6xl sm:text-8xl tabular-nums">{game.homeTeam.score}</span>
               </div>
             ) : (
-              <div className="text-muted-foreground text-2xl">vs</div>
+              <div className="font-display text-muted-foreground text-3xl font-bold tracking-[0.3em]">
+                VS
+              </div>
             )}
 
             {isFinal && (
-              <Badge variant="outline">Final{outcomeSuffix}</Badge>
+              <Badge variant="outline" className="text-xs font-semibold tracking-widest uppercase">
+                FINAL{outcomeSuffix}
+              </Badge>
             )}
-            {isLive && game.period && (
-              <Badge className="bg-red-600 text-white animate-pulse border-0">
-                LIVE · {game.period && game.periodType ? periodLabel(game.period, game.periodType) : "Live"}
+            {isLive && (
+              <Badge className="bg-red-600 text-white animate-pulse border-0 font-semibold tracking-wide">
+                LIVE{game.period ? ` · ${periodLabel(game.period, game.periodType ?? "REG")}` : ""}
               </Badge>
             )}
           </div>
 
           {/* Home Team */}
-          <div className="flex flex-col items-center gap-2 flex-1">
+          <div className="flex flex-col items-center gap-3 flex-1">
             <Image
               src={game.homeTeam.darkLogo || game.homeTeam.logo}
               alt={game.homeTeam.name}
-              width={80}
-              height={80}
-              className="hidden dark:block"
+              width={96}
+              height={96}
+              className="hidden dark:block drop-shadow-lg"
               unoptimized
             />
             <Image
               src={game.homeTeam.logo}
               alt={game.homeTeam.name}
-              width={80}
-              height={80}
-              className="dark:hidden"
+              width={96}
+              height={96}
+              className="dark:hidden drop-shadow-lg"
               unoptimized
             />
             <div className="text-center">
-              <div className="font-bold text-lg">{game.homeTeam.shortName}</div>
+              <div className="font-display font-bold text-xl sm:text-2xl uppercase tracking-wider leading-tight">
+                {game.homeTeam.shortName}
+              </div>
               {game.homeTeam.record && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground mt-0.5 font-medium">
                   {game.homeTeam.record}
                 </div>
               )}
@@ -119,9 +180,9 @@ export function GameHero({ game }: GameHeroProps) {
           </div>
         </div>
 
-        {/* Team stats mini row */}
+        {/* Mini stats row */}
         {(game.awayTeam.sog !== undefined || game.homeTeam.sog !== undefined) && (
-          <div className="flex justify-center gap-8 mt-4 text-sm text-muted-foreground">
+          <div className="flex justify-center gap-8 mt-6 text-sm text-muted-foreground font-medium">
             {game.awayTeam.sog !== undefined && (
               <span>{game.awayTeam.sog} SOG</span>
             )}
@@ -136,6 +197,11 @@ export function GameHero({ game }: GameHeroProps) {
               <span>{game.homeTeam.sog} SOG</span>
             )}
           </div>
+        )}
+
+        {/* Period box score */}
+        {(game.awayTeam.goalsByPeriod || game.homeTeam.goalsByPeriod) && (
+          <PeriodBoxScore game={game} />
         )}
       </div>
     </div>
