@@ -29,7 +29,15 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
 
   const isLive = raw.gameState === "LIVE" || raw.gameState === "CRIT";
 
-  const goals: GoalClip[] = (raw.summary?.scoring ?? []).flatMap((period) =>
+  const scoringPeriods = raw.summary?.scoring ?? [];
+  const awayGoalsByPeriod = scoringPeriods.map((p) =>
+    p.goals.filter((g) => g.teamAbbrev.default === raw.awayTeam.abbrev).length
+  );
+  const homeGoalsByPeriod = scoringPeriods.map((p) =>
+    p.goals.filter((g) => g.teamAbbrev.default === raw.homeTeam.abbrev).length
+  );
+
+  const goals: GoalClip[] = scoringPeriods.flatMap((period) =>
     period.goals.map((goal) => ({
       eventId: `${period.periodDescriptor.number}-${goal.timeInPeriod}-${goal.playerId}`,
       scorer: goal.name.default,
@@ -44,7 +52,7 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
       homeScore: goal.homeScore,
       strength: goal.strength,
       milestoneId: goal.highlightClip,
-      highlightClipSharingUrl: goal.highlightClipSharingUrl,
+      embedUrl: goal.highlightClip ? resolveVideoUrl(goal.highlightClip) : undefined,
     }))
   );
 
@@ -89,6 +97,7 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
       hits: raw.awayTeam.hits,
       pim: raw.awayTeam.pim,
       blocks: raw.awayTeam.blocks,
+      goalsByPeriod: awayGoalsByPeriod.length > 0 ? awayGoalsByPeriod : undefined,
       ...awayColors,
     },
     homeTeam: {
@@ -104,6 +113,7 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
       hits: raw.homeTeam.hits,
       pim: raw.homeTeam.pim,
       blocks: raw.homeTeam.blocks,
+      goalsByPeriod: homeGoalsByPeriod.length > 0 ? homeGoalsByPeriod : undefined,
       ...homeColors,
     },
     period: raw.periodDescriptor?.number || undefined,

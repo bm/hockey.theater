@@ -57,7 +57,7 @@ export interface GoalClip {
   homeScore: number;
   strength: "ev" | "pp" | "sh";
   milestoneId?: number;
-  highlightClipSharingUrl?: string;
+  embedUrl?: string;
 }
 
 export interface GameDetail {
@@ -72,12 +72,14 @@ export interface GameDetail {
     hits?: number;
     pim?: number;
     blocks?: number;
+    goalsByPeriod?: number[];
   };
   homeTeam: NormalizedTeamScore & {
     sog?: number;
     hits?: number;
     pim?: number;
     blocks?: number;
+    goalsByPeriod?: number[];
   };
   period?: number;
   periodType?: PeriodType;
