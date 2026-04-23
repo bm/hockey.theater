@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchGameLanding, normalizeGameDetail } from "@/lib/nhl-api/game";
+import { fetchGameLanding, fetchGameRightRail, normalizeGameDetail } from "@/lib/nhl-api/game";
 import { CACHE_TTL } from "@/lib/cache";
 
 export async function GET(
@@ -13,7 +13,13 @@ export async function GET(
   }
 
   try {
-    const raw = await fetchGameLanding(gameId);
+    const [raw, rightRail] = await Promise.all([
+      fetchGameLanding(gameId),
+      fetchGameRightRail(gameId).catch(() => null),
+    ]);
+    if (!raw.gameVideo && rightRail?.gameVideo) {
+      raw.gameVideo = rightRail.gameVideo;
+    }
     const normalized = normalizeGameDetail(raw);
 
     const isLive = normalized.gameState === "live";

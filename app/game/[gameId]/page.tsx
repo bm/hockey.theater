@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { fetchGameLanding, normalizeGameDetail } from "@/lib/nhl-api/game";
+import { fetchGameLanding, fetchGameRightRail, normalizeGameDetail } from "@/lib/nhl-api/game";
 import { formatShortDate } from "@/lib/dates";
 import { GameHero } from "@/components/game/GameHero";
 import { RecapSection } from "@/components/game/RecapSection";
@@ -34,7 +34,13 @@ export default async function GamePage({ params }: PageProps) {
 
   let game;
   try {
-    const raw = await fetchGameLanding(gameId);
+    const [raw, rightRail] = await Promise.all([
+      fetchGameLanding(gameId),
+      fetchGameRightRail(gameId).catch(() => null),
+    ]);
+    if (!raw.gameVideo && rightRail?.gameVideo) {
+      raw.gameVideo = rightRail.gameVideo;
+    }
     game = normalizeGameDetail(raw);
   } catch {
     notFound();
@@ -56,7 +62,7 @@ export default async function GamePage({ params }: PageProps) {
 
       {/* Recap videos — wider container for cinematic video */}
       {(game.threeMinRecap || game.condensedGame) && (
-        <div className="mx-auto max-w-6xl px-4 pt-8">
+        <div className="mx-auto max-w-3xl px-4 pt-8">
           <h2 className="font-display font-bold text-2xl uppercase tracking-wide mb-6">Game Video</h2>
           <RecapSection
             threeMinRecap={game.threeMinRecap}
