@@ -32,6 +32,7 @@ Key endpoints used:
 - `GET /schedule/{date}` — full week of games; find target date in `gameWeek[]`
 - `GET /score/{date}` — live scores for a date; find in `gamesByDate[]`
 - `GET /gamecenter/{gameId}/landing` — game detail, goals, video milestone IDs
+- `GET /gamecenter/{gameId}/right-rail` — gameVideo IDs (recap/condensed); use this for completed games — landing drops gameVideo after a game ends
 - `GET /gamecenter/{gameId}/play-by-play` — full PBP events
 - `GET /gamecenter/{gameId}/boxscore` — skater stats
 
@@ -58,7 +59,8 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 | `lib/nhl-api/client.ts` | Base `nhlFetch()` wrapper |
 | `lib/nhl-api/schedule.ts` | `fetchSchedule()`, `fetchScore()`, `normalizeGame()` |
 | `lib/nhl-api/game.ts` | `fetchGameLanding()`, `normalizeGameDetail()` |
-| `lib/nhl-api/video.ts` | Brightcove milestone ID → iframe embed URL |
+| `lib/nhl-api/video.ts` | `resolveShareableUrl()` — Brightcove shareable link helper |
+| `components/game/HlsPlayer.tsx` | hls.js `<video>` player; accepts `milestoneId` + optional `autoPlay` prop |
 | `lib/team-colors.ts` | Static record of all 32 teams (colors, logos, metadata) |
 | `lib/cache.ts` | Cache TTL constants and `getScheduleRevalidate()` |
 | `store/index.ts` | Zustand store: `hideScores`, `favoriteTeam`, `hasChosenTeam` |
@@ -86,7 +88,9 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 
 **`CRIT` is a live state.** When a game is in a critical situation, `gameState` is `"CRIT"` not `"LIVE"`. Both must be treated as live for polling.
 
-**Video clips are Brightcove IDs, not URLs.** `threeMinRecap`, `condensedGame`, and `highlightClip` fields are integers. `lib/nhl-api/video.ts` resolves them to `players.brightcove.net` embed URLs.
+**Video clips are Brightcove IDs, not URLs.** `threeMinRecap`, `condensedGame`, and `highlightClip` fields are integers. `/api/video/[milestoneId]` proxies the Brightcove Playback API and returns a raw `.m3u8` URL; `HlsPlayer` plays it via hls.js. Policy key is hardcoded in the route handler (extracted from `players.brightcove.net/6415718365001/default_default/config.json` → `video_cloud.policy_key`). Brightcove search is blocked by this key — only direct video lookup by ID works.
+
+**`gameVideo` missing from `landing` for completed games.** The landing endpoint silently drops `gameVideo` after a game ends. `/gamecenter/{id}/right-rail` always has it. `fetchGameRightRail()` in `lib/nhl-api/game.ts` fetches it; `page.tsx` merges it in when landing has no video.
 
 **Next.js 16 proxy convention.** The file is `proxy.ts` with `export function proxy(...)` — not `middleware.ts`/`middleware`. Using the old name builds but logs a deprecation warning.
 
@@ -109,5 +113,5 @@ Persisted to `localStorage` under key `hockey-theater-prefs`:
 - Play-by-play UI — `/api/game/[gameId]/pbp` route exists, no component
 - Boxscore table — `/api/game/[gameId]/boxscore` route exists, no component
 - Search — team search is instant (client-side `lib/team-colors.ts`), player search via `search.d3.nhle.com`
-- Individual goal clip player — **currently uses Brightcove `<iframe>` embed**. Planned upgrade: swap to `hls.js` + native `<video>`. Flow: route handler fetches raw `.m3u8` URL from Brightcove Playback API (`edge.api.brightcove.com/playback/v1/accounts/6415718365001/videos/{milestoneId}`) using the policy key extracted from NHL.com page JS; client plays the stream with `hls.js` attached to a `<video>` element. This gives full control over the player UI, lighter load, and reliable autoplay (vs. Brightcove's player config).
+- Individual goal clip player — ships hls.js + native `<video>` via `HlsPlayer`. Goal clips autoplay (muted); recap/condensed game does not.
 - PWA manifest, standings, playoffs bracket
