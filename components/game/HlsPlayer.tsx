@@ -29,12 +29,12 @@ export function HlsPlayer({ milestoneId, autoPlay = false }: HlsPlayerProps) {
           hls.loadSource(data.hlsUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            if (autoPlay) video.play().catch(() => {});
+            if (autoPlay) video.play().then(() => { video.muted = false; }).catch(() => {});
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // Safari handles HLS natively
           video.src = data.hlsUrl;
-          if (autoPlay) video.play().catch(() => {});
+          if (autoPlay) video.play().then(() => { video.muted = false; }).catch(() => {});
         }
       })
       .catch(() => {
