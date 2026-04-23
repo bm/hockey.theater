@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, Play } from "lucide-react";
 import type { GoalClip } from "@/types/game";
+import { HlsPlayer } from "./HlsPlayer";
 
 const PERIOD_LABEL: Record<number, string> = {
   1: "1st",
@@ -35,10 +36,7 @@ export function GoalWatchButton({ goal }: GoalWatchButtonProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!goal.embedUrl) return null;
-
-  // Append autoStart so video plays immediately when modal opens
-  const autoplayUrl = `${goal.embedUrl}&autoStart=true`;
+  if (!goal.milestoneId) return null;
 
   const periodStr = PERIOD_LABEL[goal.period] ?? `P${goal.period}`;
   const strengthStr = STRENGTH_LABEL[goal.strength] ?? "";
@@ -96,15 +94,7 @@ export function GoalWatchButton({ goal }: GoalWatchButtonProps) {
 
             {/* Video */}
             <div className="relative w-full aspect-video bg-black">
-              <iframe
-                key={goal.eventId}
-                src={autoplayUrl}
-                title={`${goal.scorer} goal highlight`}
-                className="absolute inset-0 w-full h-full"
-                allowFullScreen
-                allow="autoplay; fullscreen"
-                referrerPolicy="no-referrer"
-              />
+              <HlsPlayer milestoneId={goal.milestoneId} autoPlay />
             </div>
           </div>
         </div>

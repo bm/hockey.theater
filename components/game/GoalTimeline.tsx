@@ -98,7 +98,7 @@ export function GoalTimeline({ goals, awayAbbrev, homeAbbrev }: GoalTimelineProp
                     </div>
 
                     {/* Watch button — centered */}
-                    {goal.embedUrl && (
+                    {goal.milestoneId && (
                       <div className="flex justify-center pt-0.5">
                         <GoalWatchButton goal={goal} />
                       </div>

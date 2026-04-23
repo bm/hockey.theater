@@ -1,12 +1,18 @@
 import { nhlFetch } from "./client";
-import type { NHLGameLanding, NHLPlayByPlay, NHLBoxscore } from "@/types/nhl";
+import type { NHLGameLanding, NHLGameVideo, NHLPlayByPlay, NHLBoxscore } from "@/types/nhl";
 import type { GameDetail, GoalClip, VideoClip } from "@/types/game";
 import { getTeamColors } from "@/lib/team-colors";
-import { resolveVideoUrl } from "./video";
 import { CACHE_TTL } from "@/lib/cache";
 
 export async function fetchGameLanding(gameId: string): Promise<NHLGameLanding> {
   return nhlFetch<NHLGameLanding>(`/gamecenter/${gameId}/landing`, {
+    next: { revalidate: CACHE_TTL.GAME_LANDING_FINAL },
+  });
+}
+
+// The landing endpoint dropped gameVideo for completed games; right-rail still has it.
+export async function fetchGameRightRail(gameId: string): Promise<{ gameVideo?: NHLGameVideo }> {
+  return nhlFetch<{ gameVideo?: NHLGameVideo }>(`/gamecenter/${gameId}/right-rail`, {
     next: { revalidate: CACHE_TTL.GAME_LANDING_FINAL },
   });
 }
@@ -52,7 +58,6 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
       homeScore: goal.homeScore,
       strength: goal.strength,
       milestoneId: goal.highlightClip,
-      embedUrl: goal.highlightClip ? resolveVideoUrl(goal.highlightClip) : undefined,
     }))
   );
 
@@ -62,8 +67,7 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
   if (raw.gameVideo?.threeMinRecap) {
     threeMinRecap = {
       milestoneId: raw.gameVideo.threeMinRecap,
-      title: "3-Minute Recap",
-      embedUrl: resolveVideoUrl(raw.gameVideo.threeMinRecap),
+      title: "Recap",
     };
   }
 
@@ -71,7 +75,6 @@ export function normalizeGameDetail(raw: NHLGameLanding): GameDetail {
     condensedGame = {
       milestoneId: raw.gameVideo.condensedGame,
       title: "Condensed Game",
-      embedUrl: resolveVideoUrl(raw.gameVideo.condensedGame),
     };
   }
 

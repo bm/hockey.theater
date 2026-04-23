@@ -40,7 +40,6 @@ export interface VideoClip {
   milestoneId: number;
   title: string;
   url?: string;
-  embedUrl?: string;
 }
 
 export interface GoalClip {
@@ -57,7 +56,6 @@ export interface GoalClip {
   homeScore: number;
   strength: "ev" | "pp" | "sh";
   milestoneId?: number;
-  embedUrl?: string;
 }
 
 export interface GameDetail {

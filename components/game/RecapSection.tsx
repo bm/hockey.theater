@@ -2,6 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { VideoClip } from "@/types/game";
+import { HlsPlayer } from "./HlsPlayer";
 
 interface RecapSectionProps {
   threeMinRecap?: VideoClip;
@@ -9,7 +10,7 @@ interface RecapSectionProps {
 }
 
 function VideoEmbed({ clip }: { clip: VideoClip }) {
-  if (!clip.embedUrl) {
+  if (!clip.milestoneId) {
     return (
       <div className="flex items-center justify-center h-48 bg-muted rounded-lg text-muted-foreground text-sm">
         Video not yet available — check back soon.
@@ -19,14 +20,7 @@ function VideoEmbed({ clip }: { clip: VideoClip }) {
 
   return (
     <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black">
-      <iframe
-        src={clip.embedUrl}
-        title={clip.title}
-        className="absolute inset-0 w-full h-full"
-        allowFullScreen
-        allow="autoplay; fullscreen"
-        referrerPolicy="no-referrer"
-      />
+      <HlsPlayer milestoneId={clip.milestoneId} />
     </div>
   );
 }
@@ -57,7 +51,7 @@ export function RecapSection({ threeMinRecap, condensedGame }: RecapSectionProps
   return (
     <Tabs defaultValue="recap">
       <TabsList className="mb-4">
-        <TabsTrigger value="recap">3-Min Recap</TabsTrigger>
+        <TabsTrigger value="recap">Recap</TabsTrigger>
         <TabsTrigger value="condensed">Condensed Game</TabsTrigger>
       </TabsList>
       <TabsContent value="recap">
