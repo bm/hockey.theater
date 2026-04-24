@@ -47,7 +47,7 @@ export function normalizeGame(game: NHLScheduleGame): NormalizedGame {
   const homeColors = getTeamColors(game.homeTeam.abbrev);
 
   const seriesStatusText = game.seriesStatus
-    ? buildSeriesStatusText(game.seriesStatus, game.awayTeam.id, game.homeTeam.id, game.awayTeam.abbrev, game.homeTeam.abbrev)
+    ? buildSeriesStatusText(game.seriesStatus)
     : undefined;
 
   return {
@@ -92,14 +92,10 @@ export function normalizeGame(game: NHLScheduleGame): NormalizedGame {
 }
 
 function buildSeriesStatusText(
-  status: NonNullable<NHLScheduleGame["seriesStatus"]>,
-  awayId: number,
-  homeId: number,
-  awayAbbrev: string,
-  homeAbbrev: string
+  status: NonNullable<NHLScheduleGame["seriesStatus"]>
 ): string {
-  const topAbbrev = status.topSeedTeamId === awayId ? awayAbbrev : homeAbbrev;
-  const botAbbrev = status.bottomSeedTeamId === awayId ? awayAbbrev : homeAbbrev;
+  const topAbbrev = status.topSeedTeamAbbrev;
+  const botAbbrev = status.bottomSeedTeamAbbrev;
   const topWins = status.topSeedWins;
   const botWins = status.bottomSeedWins;
 

@@ -41,9 +41,9 @@ export interface NHLSeriesStatus {
   seriesTitle: string;
   seriesLetter: string;
   neededToWin: number;
-  topSeedTeamId: number;
+  topSeedTeamAbbrev: string;
   topSeedWins: number;
-  bottomSeedTeamId: number;
+  bottomSeedTeamAbbrev: string;
   bottomSeedWins: number;
   gameNumberOfSeries: number;
 }
