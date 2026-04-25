@@ -37,12 +37,12 @@ External
 4. React hydrates; ScheduleGrid mounts as a client component
    └── useSchedule("2026-04-19") fires — hits /api/schedule/2026-04-19
        └── TanStack Query deduplicates (already have data from SSR)
-5. If any game.gameState is "live" or "critical":
+5. For today's date (always) or any date with live/critical games:
    └── useLiveScores("2026-04-19", true) begins polling /api/score/... every 30s
        └── Merges live data over schedule data by game ID
 ```
 
-The server prefetch gives instant first paint. The client query keeps it fresh. The live polling only activates when needed — it's off completely for past dates.
+The server prefetch gives instant first paint. The client query keeps it fresh. Live polling always runs for today because the `/schedule` endpoint can lag behind actual game state — polling `/score` corrects it. Polling is off completely for past dates.
 
 ### Game detail page (`/game/2025030151`)
 
@@ -177,7 +177,7 @@ const liveMap = new Map(liveGames.map((g) => [g.id, g]));
 return games.map((g) => liveMap.get(g.id) ?? g);
 ```
 
-When no games are live, `refetchInterval` is `false` and no polling happens. The schedule endpoint itself has a 60s `staleTime`, so TanStack Query won't refetch it more than once per minute even if the component re-renders.
+When viewing a past date, `refetchInterval` is `false` and no polling happens. For today, polling is unconditional — the schedule endpoint can return stale "scheduled" state even for games already in progress. The score endpoint is the authoritative source of live state. The schedule endpoint itself has a 60s `staleTime`, so TanStack Query won't refetch it more than once per minute even if the component re-renders.
 
 ---
 
@@ -191,15 +191,19 @@ NHLGameVideo.condensedGame   → number (milestoneId)
 NHLGoal.highlightClip        → number (milestoneId)
 ```
 
-`lib/nhl-api/video.ts` resolves them to Brightcove embed URLs:
+All video playback goes through the same pipeline:
 
 ```
-https://players.brightcove.net/6415718365001/default_default/index.html?videoId={milestoneId}
+milestoneId
+  → /api/video/[milestoneId]   (Route Handler, cached 24h)
+      → Brightcove Playback API (edge.api.brightcove.com)
+          → returns .m3u8 HLS URL
+              → HlsPlayer (hls.js or native HLS on Safari)
 ```
 
-`RecapSection` renders these as `<iframe>` elements. The Brightcove player handles HLS streaming internally, so there's no client-side HLS.js required for recaps. `hls.js` is installed for a potential future direct-stream player but isn't wired up yet.
+`HlsPlayer` is a client component that fetches the HLS URL from `/api/video/[milestoneId]` and plays it via hls.js (or native HLS on Safari). It is used for both recap/condensed game videos (`RecapSection`) and individual goal clips (`GoalWatchButton`).
 
-Individual goal clips on `GoalTimeline` use `highlightClipSharingUrl` from the API when available (an `nhl.com` permalink) and fall back to the Brightcove embed URL.
+Goal clips open in a modal with prev/next navigation across all goals in the game (in chronological order). The modal is keyboard-navigable: ←/→ to step through clips, Escape to close.
 
 ---
 
@@ -216,6 +220,7 @@ Individual goal clips on `GoalTimeline` use `highlightClipSharingUrl` from the A
 /api/game/[gameId]/landing   → Route Handler
 /api/game/[gameId]/pbp       → Route Handler
 /api/game/[gameId]/boxscore  → Route Handler
+/api/video/[milestoneId]     → Route Handler (Brightcove → HLS URL, cached 24h)
 ```
 
 `proxy.ts` (Next.js 16's replacement for `middleware.ts`) runs at the edge and handles two redirects: `/games` → today, and `/team/bos` → `/team/BOS` case normalization. It uses the `proxy` export name and `config.matcher` to limit which paths it intercepts.

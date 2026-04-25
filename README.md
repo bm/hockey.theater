@@ -9,7 +9,7 @@ Inspired by [baseball.theater](https://baseball.theater) by Jake Lauer.
 - **Schedule by date** — browse every NHL game, navigate day by day
 - **Live scores** — auto-refreshes every 30 seconds when games are in progress
 - **Game recaps** — 3-minute recap and condensed game videos embedded directly on the page
-- **Goal timeline** — every goal with scorer, assists, time, and inline video player
+- **Goal timeline** — every goal with scorer, assists, time, and inline video player with prev/next navigation across all clips
 - **Period box score** — per-period goal breakdown on every game detail page
 - **Hide scores** — spoiler-free mode; reveal individual games when ready
 - **Favorite team** — your team's games sort to the top of every schedule page
@@ -80,11 +80,10 @@ NHL API responses are cached at the Next.js Route Handler layer with TTLs tuned 
 
 ## Video
 
-Goal clips and game recaps are currently embedded as Brightcove iframes using milestone IDs from the NHL API. The planned upgrade is to replace these with `hls.js` playing raw HLS streams fetched server-side from the Brightcove Playback API — giving full control over the player UI without exposing any API keys to the client. See `CLAUDE.md` for the full plan.
+Goal clips and game recaps play via a native `hls.js` player (`HlsPlayer`). Milestone IDs from the NHL API are resolved server-side through the Brightcove Playback API to raw `.m3u8` HLS URLs, which are cached for 24 hours. The browser never sees the Brightcove policy key. Safari uses native HLS; all other browsers use hls.js. Goal clips open in a modal with chronological prev/next navigation and keyboard support (←/→/Escape).
 
 ## Roadmap
 
-- [ ] Native video player via `hls.js` (replace Brightcove iframes)
 - [ ] Play-by-play feed (filterable by event type)
 - [ ] Team hub pages (`/team/BOS`)
 - [ ] Search (teams instant, players via NHL search API)

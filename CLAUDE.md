@@ -59,8 +59,9 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 | `lib/nhl-api/client.ts` | Base `nhlFetch()` wrapper |
 | `lib/nhl-api/schedule.ts` | `fetchSchedule()`, `fetchScore()`, `normalizeGame()` |
 | `lib/nhl-api/game.ts` | `fetchGameLanding()`, `normalizeGameDetail()` |
-| `lib/nhl-api/video.ts` | `resolveShareableUrl()` — Brightcove shareable link helper |
-| `components/game/HlsPlayer.tsx` | hls.js `<video>` player; accepts `milestoneId` + optional `autoPlay` prop |
+| `app/api/video/[milestoneId]/route.ts` | Brightcove Playback API proxy → returns `{ hlsUrl }`, cached 24h |
+| `components/game/HlsPlayer.tsx` | hls.js `<video>` player; fetches HLS URL from `/api/video/[milestoneId]`, accepts optional `autoPlay` |
+| `components/game/GoalWatchButton.tsx` | Goal clip modal with prev/next navigation across all game clips |
 | `lib/team-colors.ts` | Static record of all 32 teams (colors, logos, metadata) |
 | `lib/cache.ts` | Cache TTL constants and `getScheduleRevalidate()` |
 | `store/index.ts` | Zustand store: `hideScores`, `favoriteTeam`, `hasChosenTeam` |
@@ -79,6 +80,7 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 | `/api/game/[gameId]/landing` | Route Handler | Game detail + video |
 | `/api/game/[gameId]/pbp` | Route Handler | Play-by-play |
 | `/api/game/[gameId]/boxscore` | Route Handler | Skater stats |
+| `/api/video/[milestoneId]` | Route Handler | Brightcove → HLS URL, 24h cache |
 
 ## NHL API gotchas
 
@@ -105,7 +107,9 @@ Persisted to `localStorage` under key `hockey-theater-prefs`:
 
 ## Live polling
 
-`ScheduleGrid` checks if any game has `gameState === "live" | "critical"`. If so, `useLiveScores()` polls `/api/score/[date]` every 30 seconds via TanStack Query `refetchInterval`. Results are merged over the schedule data by game ID. Polling is fully disabled for past dates.
+`ScheduleGrid` always polls `/api/score/[date]` every 30 seconds for today's date via `useLiveScores()`. Polling also activates for any past date that still shows live games. Results are merged over the schedule data by game ID. Polling is fully disabled for dates in the past.
+
+Unconditional polling for today is intentional: the `/schedule` endpoint can lag and return stale "scheduled" state for games already in progress. The `/score` endpoint is the authoritative source of live state and corrects the display.
 
 ## What's not built yet (V2)
 
@@ -113,5 +117,4 @@ Persisted to `localStorage` under key `hockey-theater-prefs`:
 - Play-by-play UI — `/api/game/[gameId]/pbp` route exists, no component
 - Boxscore table — `/api/game/[gameId]/boxscore` route exists, no component
 - Search — team search is instant (client-side `lib/team-colors.ts`), player search via `search.d3.nhle.com`
-- Individual goal clip player — ships hls.js + native `<video>` via `HlsPlayer`. Goal clips autoplay (muted); recap/condensed game does not.
 - PWA manifest, standings, playoffs bracket
