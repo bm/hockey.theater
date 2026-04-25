@@ -3,16 +3,13 @@
 import Link from "next/link";
 import { Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useAppStore, useFavoriteTeam } from "@/store";
-import { getTeam } from "@/lib/team-colors";
+import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { hideScores, toggleHideScores } = useAppStore();
-  const favoriteTeam = useFavoriteTeam();
-  const team = favoriteTeam ? getTeam(favoriteTeam) : null;
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -21,28 +18,14 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2.5 group">
-          {team ? (
-            <>
-              <Image
-                src={team.darkLogoUrl}
-                alt={team.fullName}
-                width={32}
-                height={32}
-                className="hidden dark:block transition-transform group-hover:scale-110"
-                unoptimized
-              />
-              <Image
-                src={team.logoUrl}
-                alt={team.fullName}
-                width={32}
-                height={32}
-                className="dark:hidden transition-transform group-hover:scale-110"
-                unoptimized
-              />
-            </>
-          ) : (
-            <span className="text-xl transition-transform group-hover:scale-110 inline-block">🏒</span>
-          )}
+          <Image
+            src="/icon.png"
+            alt="hockey.theater"
+            width={32}
+            height={32}
+            className="transition-transform group-hover:scale-110"
+            unoptimized
+          />
           <span className="font-display font-bold text-xl uppercase tracking-widest">
             hockey<span className="text-primary">.</span><span className="text-muted-foreground font-semibold normal-case tracking-normal text-lg">theater</span>
           </span>
