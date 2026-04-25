@@ -4,6 +4,7 @@ import { useMemo, useEffect } from "react";
 import { useSchedule, useLiveScores } from "@/hooks/useSchedule";
 import { useFavoriteTeam } from "@/store";
 import { GameCard, GameCardSkeleton } from "./GameCard";
+import { isToday } from "@/lib/dates";
 import type { NormalizedGame } from "@/types/game";
 
 interface ScheduleGridProps {
@@ -18,11 +19,13 @@ export function ScheduleGrid({ date, teamFilter, initialGames }: ScheduleGridPro
   const { data: scheduleGames, isLoading } = useSchedule(date);
   const games = scheduleGames ?? initialGames ?? [];
 
+  // Always poll /score for today — /schedule can lag and mis-report live games as scheduled.
   const hasLive = games.some(
     (g) => g.gameState === "live" || g.gameState === "critical"
   );
+  const shouldPollLive = isToday(date) || hasLive;
 
-  const { data: liveGames } = useLiveScores(date, hasLive);
+  const { data: liveGames } = useLiveScores(date, shouldPollLive);
 
   // Merge live scores over schedule data
   const mergedGames = useMemo(() => {
