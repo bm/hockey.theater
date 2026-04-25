@@ -31,6 +31,9 @@ export function GoalTimeline({ goals, awayAbbrev, homeAbbrev }: GoalTimelineProp
     );
   }
 
+  // Chronological list of goals that have clips — passed to each watch button for navigation
+  const clippableGoals = goals.filter((g) => g.milestoneId);
+
   const byPeriod = goals.reduce<Record<number, GoalClip[]>>((acc, goal) => {
     (acc[goal.period] ??= []).push(goal);
     return acc;
@@ -100,7 +103,10 @@ export function GoalTimeline({ goals, awayAbbrev, homeAbbrev }: GoalTimelineProp
                     {/* Watch button — centered */}
                     {goal.milestoneId && (
                       <div className="flex justify-center pt-0.5">
-                        <GoalWatchButton goal={goal} />
+                        <GoalWatchButton
+                          goals={clippableGoals}
+                          index={clippableGoals.findIndex((g) => g.eventId === goal.eventId)}
+                        />
                       </div>
                     )}
                   </div>
