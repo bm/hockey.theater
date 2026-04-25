@@ -115,7 +115,7 @@ export function GoalWatchButton({ goals, index }: GoalWatchButtonProps) {
                   <ChevronLeft className="h-5 w-5" />
                 </button>
                 <span className="text-xs text-muted-foreground font-medium tabular-nums w-10 text-center">
-                  {currentIndex + 1}/{total}
+                  {currentIndex + 1} / {total}
                 </span>
                 <button
                   onClick={next}
