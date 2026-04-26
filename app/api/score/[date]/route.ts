@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { fetchScore } from "@/lib/nhl-api/schedule";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ date: string }> }
@@ -15,7 +18,8 @@ export async function GET(
     const games = await fetchScore(date);
     return NextResponse.json(games, {
       headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        // Live score responses must never be served stale to clients/CDN.
+        "Cache-Control": "no-store, max-age=0",
       },
     });
   } catch (err) {
