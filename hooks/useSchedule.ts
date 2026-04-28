@@ -15,11 +15,12 @@ async function fetchScores(date: string): Promise<NormalizedGame[]> {
   return res.json();
 }
 
-export function useSchedule(date: string) {
+export function useSchedule(date: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["schedule", date],
     queryFn: () => fetchGames(date),
     staleTime: 60_000,
+    enabled: options?.enabled ?? true,
   });
 }
 

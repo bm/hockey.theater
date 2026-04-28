@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { useSchedule, useLiveScores } from "@/hooks/useSchedule";
 import { useFavoriteTeam } from "@/store";
 import { GameCard, GameCardSkeleton } from "./GameCard";
@@ -15,24 +15,32 @@ interface ScheduleGridProps {
 
 export function ScheduleGrid({ date, teamFilter, initialGames }: ScheduleGridProps) {
   const favoriteTeam = useFavoriteTeam();
+  const dateIsToday = isToday(date);
 
-  const { data: scheduleGames, isLoading } = useSchedule(date);
-  const games = scheduleGames ?? initialGames ?? [];
+  // For today: skip useSchedule entirely. The schedule endpoint's server-side data cache
+  // (up to 5 min TTL) produces stale scores that can briefly replace fresh live scores.
+  // initialGames (ISR, ≤60s) + liveGames (always fresh) is sufficient for today's date.
+  const { data: scheduleGames, isLoading } = useSchedule(date, { enabled: !dateIsToday });
 
-  // Always poll /score for today — /schedule can lag and mis-report live games as scheduled.
-  const hasLive = games.some(
+  // For today: base is initialGames (ISR snapshot), falling back to liveGames once loaded.
+  // For other dates: base is scheduleGames from the schedule API.
+  const baseGames: NormalizedGame[] = dateIsToday
+    ? (initialGames ?? [])
+    : (scheduleGames ?? initialGames ?? []);
+
+  const hasLive = baseGames.some(
     (g) => g.gameState === "live" || g.gameState === "critical"
   );
-  const shouldPollLive = isToday(date) || hasLive;
+  const shouldPollLive = dateIsToday || hasLive;
 
   const { data: liveGames } = useLiveScores(date, shouldPollLive);
 
-  // Merge live scores over schedule data
+  // Merge live scores over base data — liveGames is always authoritative when present.
   const mergedGames = useMemo(() => {
-    if (!liveGames || liveGames.length === 0) return games;
+    if (!liveGames || liveGames.length === 0) return baseGames;
     const liveMap = new Map(liveGames.map((g) => [g.id, g]));
-    return games.map((g) => liveMap.get(g.id) ?? g);
-  }, [games, liveGames]);
+    return baseGames.map((g) => liveMap.get(g.id) ?? g);
+  }, [baseGames, liveGames]);
 
   // Sort: favorite team first, then by start time
   const sortedGames = useMemo(() => {
@@ -57,7 +65,7 @@ export function ScheduleGrid({ date, teamFilter, initialGames }: ScheduleGridPro
     );
   }, [sortedGames, teamFilter]);
 
-  if (isLoading && !initialGames) {
+  if ((dateIsToday ? !liveGames : isLoading) && !initialGames) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
