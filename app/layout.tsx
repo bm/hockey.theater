@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, DM_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/next";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { FavoriteTeamModal } from "@/components/layout/FavoriteTeamModal";
@@ -60,6 +61,7 @@ export default function RootLayout({
             <FavoriteTeamModal />
           </QueryProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
