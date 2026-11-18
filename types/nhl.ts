@@ -107,11 +107,27 @@ export interface NHLScheduleResponse {
 }
 
 // Score endpoint (live scores for a date)
+// /score/{date} — flat `games` list for a single date. Team objects are slimmer
+// than schedule teams (no placeName/commonName/darkLogo/record), so score games
+// are only used to patch live state onto schedule games, never normalized alone.
+export interface NHLScoreGame {
+  id: number;
+  gameDate: string;
+  startTimeUTC: string;
+  gameState: NHLGameState;
+  gameScheduleState: NHLGameScheduleState;
+  awayTeam: { id: number; abbrev: string; score?: number };
+  homeTeam: { id: number; abbrev: string; score?: number };
+  period?: number;
+  periodDescriptor?: NHLPeriodDescriptor;
+  gameOutcome?: { lastPeriodType: NHLPeriodType };
+}
+
 export interface NHLScoreResponse {
   prevDate: string;
   currentDate: string;
   nextDate: string;
-  gamesByDate?: NHLGameDay[];
+  games?: NHLScoreGame[];
 }
 
 // Game landing (detail page)

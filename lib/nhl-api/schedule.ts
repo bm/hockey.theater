@@ -2,6 +2,7 @@ import { nhlFetch } from "./client";
 import type {
   NHLScheduleResponse,
   NHLScoreResponse,
+  NHLScoreGame,
   NHLScheduleGame,
   NHLGameState,
 } from "@/types/nhl";
@@ -42,7 +43,10 @@ function mapGameType(gameType: number): NormalizedGame["gameType"] {
   }
 }
 
-export function normalizeGame(game: NHLScheduleGame): NormalizedGame {
+export function normalizeGame(
+  game: NHLScheduleGame,
+  gameDate?: string
+): NormalizedGame {
   const awayColors = getTeamColors(game.awayTeam.abbrev);
   const homeColors = getTeamColors(game.homeTeam.abbrev);
 
@@ -52,7 +56,9 @@ export function normalizeGame(game: NHLScheduleGame): NormalizedGame {
 
   return {
     id: game.id,
-    date: game.startTimeUTC.slice(0, 10),
+    // Local (ET) game date from the schedule day. startTimeUTC rolls over to the
+    // next day for any game starting at or after 7pm ET.
+    date: gameDate ?? game.startTimeUTC.slice(0, 10),
     startTimeUTC: game.startTimeUTC,
     gameState: mapGameState(game.gameState, game.gameScheduleState),
     gameType: mapGameType(game.gameType),
@@ -110,21 +116,66 @@ function buildSeriesStatusText(
     : `${botAbbrev} leads ${botWins}-${topWins}`;
 }
 
-// Called server-side in Route Handlers
+/** Final, postponed or cancelled: the game's state will not change again. */
+export function isSettled(game: NormalizedGame): boolean {
+  return (
+    game.gameState === "final" ||
+    game.gameState === "postponed" ||
+    game.gameState === "cancelled"
+  );
+}
+
+// Schedule supplies the full game structure (team names, broadcasts, series).
+// It lags badly on live state, so it is only cached and never trusted for state.
 export async function fetchSchedule(date: string): Promise<NormalizedGame[]> {
   const data = await nhlFetch<NHLScheduleResponse>(`/schedule/${date}`, {
     next: { revalidate: CACHE_TTL.TODAY_PRE_GAME },
   });
 
   const day = data.gameWeek.find((d) => d.date === date);
-  return day ? day.games.map(normalizeGame) : [];
+  return day ? day.games.map((g) => normalizeGame(g, date)) : [];
 }
 
-export async function fetchScore(date: string): Promise<NormalizedGame[]> {
+// Score is the authoritative source for live state and scores.
+async function fetchScoreGames(date: string): Promise<NHLScoreGame[]> {
   const data = await nhlFetch<NHLScoreResponse>(`/score/${date}`, {
-    next: { revalidate: CACHE_TTL.TODAY_LIVE },
+    next: { revalidate: CACHE_TTL.SCORE },
   });
+  return (data.games ?? []).filter((g) => g.gameDate === date);
+}
 
-  const day = data.gamesByDate?.find((d) => d.date === date);
-  return day ? day.games.map(normalizeGame) : [];
+function applyScore(game: NormalizedGame, score: NHLScoreGame): NormalizedGame {
+  return {
+    ...game,
+    gameState: mapGameState(score.gameState, score.gameScheduleState),
+    startTimeUTC: score.startTimeUTC,
+    awayTeam: { ...game.awayTeam, score: score.awayTeam.score },
+    homeTeam: { ...game.homeTeam, score: score.homeTeam.score },
+    period: score.periodDescriptor?.number || score.period || undefined,
+    periodType: score.periodDescriptor?.periodType || undefined,
+    gameOutcome: score.gameOutcome?.lastPeriodType,
+  };
+}
+
+/**
+ * Games for a date with correct live state: schedule structure + score state.
+ * Score refetches are skipped once every scheduled game is settled.
+ */
+export async function fetchGamesForDate(date: string): Promise<NormalizedGame[]> {
+  const games = await fetchSchedule(date);
+  if (games.length === 0 || games.every(isSettled)) return games;
+
+  let scores: NHLScoreGame[];
+  try {
+    scores = await fetchScoreGames(date);
+  } catch (err) {
+    console.error("Score fetch failed, falling back to schedule state:", err);
+    return games;
+  }
+
+  const byId = new Map(scores.map((s) => [s.id, s]));
+  return games.map((g) => {
+    const score = byId.get(g.id);
+    return score ? applyScore(g, score) : g;
+  });
 }

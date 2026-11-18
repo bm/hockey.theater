@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { fetchSchedule } from "@/lib/nhl-api/schedule";
+import { fetchGamesForDate } from "@/lib/nhl-api/schedule";
 import { formatDisplayDate } from "@/lib/dates";
 import { DateNav } from "@/components/layout/DateNav";
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
@@ -32,7 +32,7 @@ export default async function SchedulePage({ params, searchParams }: PageProps) 
   // Prefetch on server for initial paint — client takes over for live updates
   let initialGames;
   try {
-    initialGames = await fetchSchedule(date);
+    initialGames = await fetchGamesForDate(date);
   } catch {
     initialGames = undefined;
   }
