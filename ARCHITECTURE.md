@@ -31,18 +31,17 @@ External
 ```
 1. Browser hits /games/2026-04-19
 2. Next.js renders SchedulePage (RSC)
-   └── calls fetchSchedule("2026-04-19") directly — no HTTP, runs in same process
-       └── nhlFetch("/schedule/2026-04-19") → NHL API → normalizeGame() × N
+   └── calls fetchGamesForDate("2026-04-19") directly — no HTTP, same process
+       ├── nhlFetch("/schedule/2026-04-19") → structure (teams, broadcasts, series)
+       └── nhlFetch("/score/2026-04-19")    → authoritative state + scores, merged by ID
 3. HTML is streamed to browser with initial game data
 4. React hydrates; ScheduleGrid mounts as a client component
-   └── useSchedule("2026-04-19") fires — hits /api/schedule/2026-04-19
-       └── TanStack Query deduplicates (already have data from SSR)
-5. For today's date (always) or any date with live/critical games:
-   └── useLiveScores("2026-04-19", true) begins polling /api/score/... every 30s
-       └── Merges live data over schedule data by game ID
+   └── useSchedule(date, initialGames) seeds TanStack Query with the SSR data,
+       refetches /api/schedule/{date} on mount unless every game is settled,
+       then polls on an interval chosen from the games' state
 ```
 
-The server prefetch gives instant first paint. The client query keeps it fresh. Live polling always runs for today because the `/schedule` endpoint can lag behind actual game state — polling `/score` corrects it. Polling is off completely for past dates.
+The `/schedule` endpoint lags badly on live state, so it is only used for structure. `/score` is merged over it on the server, and the browser only ever sees merged data.
 
 ### Game detail page (`/game/2025030151`)
 
@@ -72,7 +71,8 @@ The raw types mirror the actual API JSON field names (e.g. `commonName`, `placeN
 ### Normalization functions
 
 `lib/nhl-api/schedule.ts`
-- `normalizeGame(raw: NHLScheduleGame): NormalizedGame` — maps the schedule/score game shape
+- `normalizeGame(raw: NHLScheduleGame, date): NormalizedGame` — maps the schedule game shape
+- `fetchGamesForDate(date)` — schedule structure + `/score` state merged; used by the page and `/api/schedule`
 - `buildSeriesStatusText(...)` — converts numeric series win counts into readable strings ("BOS leads 3-1")
 - `mapGameState()` — translates NHL's `FUT`/`PRE`/`LIVE`/`CRIT`/`FINAL`/`OFF` + `gameScheduleState` into the app's `GameState` union
 
@@ -103,15 +103,15 @@ All NHL API calls happen server-side. The browser never calls `api-web.nhle.com`
 
 | Endpoint | TTL | Reasoning |
 |---|---|---|
-| Past schedule | 24h | Scores are final, never change |
-| Today's schedule (pre-game) | 5min | Start times can shift |
-| Today's schedule (live games) | 30s | Score updates every ~20s |
-| Today's schedule (all final) | 10min | Can relax once done |
+| `/schedule` data cache | 5min | Structure only; state comes from `/score` |
+| `/score` data cache | 10s | Authoritative live state |
+| `/api/schedule` (any game unsettled) | 10s | Live or upcoming games |
+| `/api/schedule` (all settled) | 1h | Final / postponed / cancelled won't change |
 | Game landing (final) | 1h | Video highlights appear ~2h post-game |
 | Game landing (live) | 20s | Active play-by-play |
 | Play-by-play (final) | 6h | Immutable once final |
 
-`getScheduleRevalidate(date, hasLiveGames)` chooses the right TTL at runtime by comparing the date against today and whether any games are currently live.
+`gamesCacheControl(allSettled)` picks the header from the games' own state, never from the server clock. The server runs in UTC, so from 7pm ET onward the night's date is already "yesterday" there; keying cache TTLs on the date is what previously froze live games in a 24h CDN cache.
 
 ---
 
@@ -155,7 +155,7 @@ Next.js App Router defaults to server components. Components opt in to the clien
 - `Navbar` — reads/writes Zustand store
 - `FavoriteTeamModal` — needs `useEffect` for mount guard (SSR hydration safety)
 - `QueryProvider` — must be a client component to instantiate `QueryClient`
-- All hooks (`useSchedule`, `useLiveScores`, `useGameDetail`) — TanStack Query requires client context
+- All hooks (`useSchedule`, `useGameDetail`) — TanStack Query requires client context
 
 The split is intentional: server components handle initial data and markup; client components handle interactivity and live updates. Server components can import and call `lib/nhl-api/*` functions directly without going through `/api/*` routes — the route handlers exist for the browser-side fetches only.
 
@@ -163,21 +163,17 @@ The split is intentional: server components handle initial data and markup; clie
 
 ## Live score updates
 
-When any game on the schedule page has `gameState === "live"` or `"critical"`, `ScheduleGrid` enables a second TanStack Query:
+`useSchedule(date, initialGames)` is the only client query on the schedule page. Its `refetchInterval` is computed from the current data:
 
-```typescript
-// hooks/useSchedule.ts
-useLiveScores(date, hasLive)   // refetchInterval: 30_000 when enabled
-```
+| Games | Interval |
+|---|---|
+| Any live/critical, or a scheduled game starting within 15 min (or overdue) | 30s |
+| Unsettled games, none imminent | 5 min |
+| All final/postponed/cancelled | off |
 
-This polls `/api/score/[date]` (backed by `GET /score/{date}` on the NHL API) every 30 seconds. The score endpoint returns the same `NormalizedGame` shape as the schedule endpoint. `ScheduleGrid` merges the two datasets by game ID, with live data taking precedence:
+This works for any date and any viewer timezone, so a late game from "yesterday" keeps updating until it ends. `/api/schedule/[date]` returns schedule structure with `/score` state merged in (`fetchGamesForDate()`).
 
-```typescript
-const liveMap = new Map(liveGames.map((g) => [g.id, g]));
-return games.map((g) => liveMap.get(g.id) ?? g);
-```
-
-When viewing a past date, `refetchInterval` is `false` and no polling happens. For today, polling is unconditional — the schedule endpoint can return stale "scheduled" state even for games already in progress. The score endpoint is the authoritative source of live state. The schedule endpoint itself has a 60s `staleTime`, so TanStack Query won't refetch it more than once per minute even if the component re-renders.
+**`/score` response shape:** games are a flat top-level `games[]` (each with `gameDate`), and team objects are slimmer than schedule teams (`name` instead of `placeName`/`commonName`, no `darkLogo`/`record`). Never run score games through `normalizeGame()`; `applyScore()` copies only state, scores, and period onto schedule games.
 
 ---
 
@@ -216,7 +212,6 @@ Goal clips open in a modal with prev/next navigation across all goals in the gam
 /game/[gameId]            → GamePage (dynamic, no ISR)
 /team/[abbrev]            → (not yet built)
 /api/schedule/[date]      → Route Handler
-/api/score/[date]         → Route Handler
 /api/game/[gameId]/landing   → Route Handler
 /api/game/[gameId]/pbp       → Route Handler
 /api/game/[gameId]/boxscore  → Route Handler

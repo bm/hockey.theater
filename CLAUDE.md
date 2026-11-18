@@ -30,7 +30,7 @@ NHL public API: `https://api-web.nhle.com/v1/`
 
 Key endpoints used:
 - `GET /schedule/{date}` — full week of games; find target date in `gameWeek[]`
-- `GET /score/{date}` — live scores for a date; find in `gamesByDate[]`
+- `GET /score/{date}` — authoritative live state for a date; flat `games[]` (not `gamesByDate`), slimmer team objects
 - `GET /gamecenter/{gameId}/landing` — game detail, goals, video milestone IDs
 - `GET /gamecenter/{gameId}/right-rail` — gameVideo IDs (recap/condensed); use this for completed games — landing drops gameVideo after a game ends
 - `GET /gamecenter/{gameId}/play-by-play` — full PBP events
@@ -57,13 +57,13 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 | `types/nhl.ts` | Raw NHL API response types |
 | `types/game.ts` | Normalized internal types used by components |
 | `lib/nhl-api/client.ts` | Base `nhlFetch()` wrapper |
-| `lib/nhl-api/schedule.ts` | `fetchSchedule()`, `fetchScore()`, `normalizeGame()` |
+| `lib/nhl-api/schedule.ts` | `fetchGamesForDate()` (schedule + score merged), `normalizeGame()` |
 | `lib/nhl-api/game.ts` | `fetchGameLanding()`, `normalizeGameDetail()` |
 | `app/api/video/[milestoneId]/route.ts` | Brightcove Playback API proxy → returns `{ hlsUrl }`, cached 24h |
 | `components/game/HlsPlayer.tsx` | hls.js `<video>` player; fetches HLS URL from `/api/video/[milestoneId]`, accepts optional `autoPlay` |
 | `components/game/GoalWatchButton.tsx` | Goal clip modal with prev/next navigation across all game clips |
 | `lib/team-colors.ts` | Static record of all 32 teams (colors, logos, metadata) |
-| `lib/cache.ts` | Cache TTL constants and `getScheduleRevalidate()` |
+| `lib/cache.ts` | Cache TTL constants and `gamesCacheControl()` |
 | `store/index.ts` | Zustand store: `hideScores`, `favoriteTeam`, `hasChosenTeam` |
 | `proxy.ts` | Next.js 16 edge proxy: `/games` redirect, team abbrev normalization |
 
@@ -75,8 +75,7 @@ See `ARCHITECTURE.md` for the full picture including request lifecycle, caching 
 | `/games` | Proxy redirect | → `/games/{today}` |
 | `/games/[date]` | ISR (60s) | Schedule page |
 | `/game/[gameId]` | Dynamic | Game detail |
-| `/api/schedule/[date]` | Route Handler | Proxies NHL schedule, returns `NormalizedGame[]` |
-| `/api/score/[date]` | Route Handler | Live scores, 30s TTL |
+| `/api/schedule/[date]` | Route Handler | Schedule + live score state merged, returns `NormalizedGame[]` |
 | `/api/game/[gameId]/landing` | Route Handler | Game detail + video |
 | `/api/game/[gameId]/pbp` | Route Handler | Play-by-play |
 | `/api/game/[gameId]/boxscore` | Route Handler | Skater stats |
@@ -107,9 +106,7 @@ Persisted to `localStorage` under key `hockey-theater-prefs`:
 
 ## Live polling
 
-`ScheduleGrid` always polls `/api/score/[date]` every 30 seconds for today's date via `useLiveScores()`. Polling also activates for any past date that still shows live games. Results are merged over the schedule data by game ID. Polling is fully disabled for dates in the past.
-
-Unconditional polling for today is intentional: the `/schedule` endpoint can lag and return stale "scheduled" state for games already in progress. The `/score` endpoint is the authoritative source of live state and corrects the display.
+`/schedule` lags on live state, so `fetchGamesForDate()` merges `/score` state (authoritative) over it on the server. `ScheduleGrid` uses a single query, `useSchedule()`, which polls `/api/schedule/[date]` every 30s while a game is live or about to start, every 5 min while games are upcoming, and stops once every game is final/postponed/cancelled. Polling and cache TTLs are driven by game state, never by comparing the date to "today": the server is UTC, so the evening's games belong to a date it considers past.
 
 ## What's not built yet (V2)
 
